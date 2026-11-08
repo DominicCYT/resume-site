@@ -26,7 +26,7 @@ flowchart LR
 
 | Stage | AWS service | Input artifact | Output artifact | What it does |
 |---|---|---|---|---|
-| Source | CodePipeline + GitHub connection (`lab8`) | none | `SourceArtifact` | Detects a push to `main` and saves a snapshot of the repository |
+| Source | CodePipeline + GitHub connection (`resume-github`) | none | `SourceArtifact` | Detects a push to `main` and saves a snapshot of the repository |
 | Build | CodeBuild project `resume-build-1` (`buildspec-build.yml`) | `SourceArtifact` | `BuildArtifact` | Runs `npm run build`, which copies the site files into `dist/` and exports only that folder |
 | Test | CodeBuild project `resume-test-2` (`buildspec-test.yml`) | `SourceArtifact` | none | Runs `npm ci` and the Jest tests. A failure stops the pipeline before deploy |
 | Deploy | Amazon S3 deploy action | `BuildArtifact` | none | Extracts the built files into the S3 hosting bucket |
@@ -69,7 +69,7 @@ Design notes:
    ```
 
 ### 3.2 GitHub connection
-Developer Tools > Settings > Connections. This project uses the existing connection `lab8` (status Available). If you need a new one, create a GitHub connection and authorize it in the browser. It must be in the same region as the pipeline, and the AWS Connector for GitHub app must have access to this repository.
+Developer Tools > Settings > Connections > Create connection. Choose GitHub, name it `resume-github`, click Connect to GitHub, and install the AWS Connector for GitHub app on the `resume-site` repository. Wait until the status shows Available. The connection must be in the same region as the pipeline. Afterwards the app appears in GitHub under Settings > Applications > Installed GitHub Apps. Without the installed app, pushes do not start the pipeline.
 
 ### 3.3 CodeBuild projects
 Create two projects (CodeBuild > Create project, or from the pipeline wizard), each with its own new service role:
@@ -86,14 +86,14 @@ When a project runs inside the pipeline, the pipeline's `SourceArtifact` is the 
 
 ### 3.4 Pipeline `resume-website`
 1. CodePipeline > Create pipeline > Build custom pipeline. Name `resume-website`, new service role.
-2. **Source:** GitHub (via GitHub App), connection `lab8`, repository `DominicCYT/resume-site`, branch `main`, start the pipeline on source code change. Output artifact `SourceArtifact`.
+2. **Source:** GitHub (via GitHub App), connection `resume-github`, repository `DominicCYT/resume-site`, branch `main`, start the pipeline on source code change. Output artifact `SourceArtifact`.
 3. **Build:** AWS CodeBuild, project `resume-build-1`, input `SourceArtifact`, output `BuildArtifact`.
 4. **Test:** AWS CodeBuild, project `resume-test-2`, input `SourceArtifact`, no output artifact.
 5. **Deploy:** Amazon S3, bucket `a01365286-resume-site`, input `BuildArtifact`, tick "Extract file before deploy".
 6. Create the pipeline. It runs once automatically.
 
 ### 3.5 Pipeline service role permissions
-The wizard-created pipeline role was missing some permissions. An inline policy was added to the pipeline role allowing: `codebuild:StartBuild`, `BatchGetBuilds` and `StopBuild`; S3 read and write on the hosting bucket and the `codepipeline-us-west-2-*` artifact buckets; and `codeconnections:UseConnection` (and `codestar-connections:UseConnection`) for the GitHub connection.
+The wizard-created pipeline role was missing some permissions. An inline policy was added to the pipeline role allowing: `codebuild:StartBuild`, `BatchGetBuilds` and `StopBuild`; S3 read and write on the hosting bucket and the `codepipeline-us-west-2-*` artifact buckets; and `codeconnections:UseConnection` (and `codestar-connections:UseConnection`) for the GitHub connection. The policy must name the ARN of the connection in use, so it was updated when the connection was recreated.
 
 ### 3.6 Local development
 ```
@@ -110,13 +110,14 @@ npm run build   # creates dist/
 - **View logs:** CodePipeline > the stage > Details opens the CodeBuild run. Logs are also in CloudWatch Logs under `/aws/codebuild/<project-name>`.
 - **Re-run without a code change:** CodePipeline > Release change.
 - **Update Node or the build image:** change `nodejs:` in the buildspecs or the image in the CodeBuild project environment.
-- **Cost:** S3, CodeBuild and CodePipeline usage for one small site is minimal. Delete the pipeline, CodeBuild projects, IAM roles and bucket when they are no longer needed.
+- **Cost:** S3, CodeBuild and CodePipeline usage for one small site is minimal. Delete the pipeline, CodeBuild projects, IAM roles, connection and bucket when they are no longer needed.
 
 ## 5. Troubleshooting
 
 | Symptom | Likely cause and fix |
 |---|---|
-| Source stage: "Unable to use Connection ... role does not have sufficient permissions" | The pipeline role lacks `codeconnections:UseConnection`. Add it as an inline policy (section 3.5) |
+| Pushes to GitHub do not start the pipeline | The AWS Connector for GitHub app is not installed on the GitHub account or lacks access to the repository. Install it through a new connection, then confirm it appears under GitHub > Settings > Applications > Installed GitHub Apps. Also check the Source action's trigger filters |
+| Source stage: "Unable to use Connection ... role does not have sufficient permissions" | The pipeline role lacks `codeconnections:UseConnection` for the connection's ARN. Add or update the inline policy (section 3.5) |
 | Build stage: `codebuild:StartBuild` not authorized | The pipeline role lacks CodeBuild permissions. Add them (section 3.5) |
 | CodeBuild: `ACCESS_DENIED` creating CloudWatch log streams | The project's service role only allows logs for a different project name. Give each project its own new service role, or widen the log resource to `/aws/codebuild/resume-*` |
 | `buildspec ... no such file or directory` | The file is not at the repository root, or the project's Buildspec name does not match the real file name exactly |
