@@ -93,7 +93,16 @@ When a project runs inside the pipeline, the pipeline's `SourceArtifact` is the 
 6. Create the pipeline. It runs once automatically.
 
 ### 3.5 Pipeline service role permissions
-The wizard-created pipeline role was missing some permissions. An inline policy was added to the pipeline role allowing: `codebuild:StartBuild`, `BatchGetBuilds` and `StopBuild`; S3 read and write on the hosting bucket and the `codepipeline-us-west-2-*` artifact buckets; and `codeconnections:UseConnection` (and `codestar-connections:UseConnection`) for the GitHub connection. The policy must name the ARN of the connection in use, so it was updated when the connection was recreated.
+The pipeline's service role (see the pipeline's Settings page for its name) needs these permissions beyond the defaults the wizard creates. They are added as an inline policy on that role:
+
+| Permission | Why it is needed |
+|---|---|
+| `codeconnections:UseConnection` and `codestar-connections:UseConnection` on the GitHub connection | Lets the Source stage read the repository |
+| `codebuild:StartBuild`, `codebuild:BatchGetBuilds`, `codebuild:StopBuild` | Lets the Build and Test stages run the CodeBuild projects |
+| `s3:PutObject`, `s3:PutObjectAcl`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket`, `s3:GetBucketLocation` on `a01365286-resume-site` | Lets the Deploy stage write the site files to the hosting bucket |
+| `s3:GetObject`, `s3:PutObject`, `s3:GetObjectVersion`, `s3:GetBucketVersioning`, `s3:GetBucketAcl`, `s3:GetBucketLocation` on `codepipeline-us-west-2-*` | Lets stages pass artifacts through the pipeline's artifact bucket |
+
+The connection permission must match the connection in use, so update it if the connection is recreated.
 
 ### 3.6 Local development
 ```
