@@ -4,7 +4,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 beforeEach(() => { document.documentElement.innerHTML = html; });
 
 test('has a title and language', () => {
-  expect(document.title).toMatch(/Alex Morgan/);
+  expect(document.title).toMatch(/Dominic Cheung/);
   expect(html).toMatch(/<html[^>]*lang="en"/);
 });
 test('shows the name as the single h1', () => {
