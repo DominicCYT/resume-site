@@ -150,7 +150,4 @@ npm run build   # creates dist/
 | Automated tests integrated in the pipeline | Completed |
 | Documentation with diagram, setup, maintenance, troubleshooting | Completed |
 | CloudWatch Logs for build output | Completed (automatic with CodeBuild) |
-| CloudWatch alarms and notifications (optional) | Not completed |
-| CloudFront / HTTPS / custom domain | Not completed |
-| Manual approval stage or staging environment | Not completed |
-| Infrastructure as code (CloudFormation) | Not completed |
+
